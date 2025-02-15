@@ -1,24 +1,81 @@
--- Script para pulo infinito de todos os jogadores no servidor
-local Players = game:GetService("Players")
+--[[ 
+    WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
 
--- Função para dar pulo infinito a um jogador
-local function darPuloInfinito(jogador)
-    jogador.CharacterAdded:Connect(function(character)
-        local humanoide = character:WaitForChild("Humanoid")
+    Script Universal de Pulo Infinito para Todos os Jogadores no Servidor.
+    
+    Este script vai fazer com que todos os jogadores no servidor possam pular infinitamente,
+    independentemente de quando eles entrarem no servidor.
+]]
 
-        -- Loop infinito para fazer o jogador pular
-        while true do
-            humanoide:ChangeState(Enum.HumanoidStateType.Physics) -- Permite movimento livre
-            humanoide:Move(Vector3.new(0, 50, 0)) -- Simula um pulo
-            wait(0.1) -- Atraso entre os pulos
+-- Configurações iniciais
+local InfiniteJumpEnabled = true  -- Habilita o pulo infinito para todos os jogadores
+local JumpHeightMultiplier = 1.5 -- Multiplicador para a altura do pulo
+local CooldownTime = 0.5         -- Tempo de espera entre saltos (ajuda a evitar spams de pulo)
+
+-- Função que faz o pulo infinito para um jogador
+local function enableInfiniteJump(player)
+    -- Espera o personagem ser carregado
+    player.CharacterAdded:Connect(function(character)
+        -- Verifica se o personagem tem o humanoide
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        -- Função que altera o estado para pular
+        local function onJumpRequest()
+            if InfiniteJumpEnabled then
+                -- Garante que o personagem sempre salta
+                humanoid:ChangeState("Jumping")
+                
+                -- Ajusta a altura do pulo
+                humanoid:Move(Vector3.new(0, humanoid.JumpHeight * JumpHeightMultiplier, 0))
+                
+                -- Previne que o jogador pule infinitamente sem cooldown
+                wait(CooldownTime)
+            end
         end
+
+        -- Conecta o evento de pulo ao estado do jogador
+        game:GetService("UserInputService").JumpRequest:Connect(onJumpRequest)
     end)
 end
 
--- Aplica o pulo infinito a todos os jogadores que já estão no servidor
-for _, jogador in ipairs(Players:GetPlayers()) do
-    darPuloInfinito(jogador)
+-- Ativa o pulo infinito para todos os jogadores no servidor (inclusive novos jogadores)
+local function enableForAllPlayers()
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player.Character then
+            enableInfiniteJump(player)
+        else
+            player.CharacterAdded:Connect(function()
+                enableInfiniteJump(player)
+            end)
+        end
+    end
 end
 
--- Aplica o pulo infinito a qualquer jogador que entrar no servidor depois
-Players.PlayerAdded:Connect(darPuloInfinito)
+-- Aplica o pulo infinito para todos os jogadores que já estão no servidor
+enableForAllPlayers()
+
+-- Atualiza a configuração para jogadores que entram após o script ser executado
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        enableInfiniteJump(player)
+    end)
+end)
+
+-- Função de notificação para todos os jogadores
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    player:SendNotification({
+        Title = "Pulo Infinito Ativado!",
+        Text = "Todos os jogadores têm agora pulo infinito!",
+        Duration = 5
+    })
+end)
+
+-- Função para reiniciar as configurações após um certo tempo (se necessário)
+local function resetSettings()
+    wait(60)  -- Após 1 minuto, resetar o pulo infinito (opcional)
+    InfiniteJumpEnabled = false
+    game:GetService("Players"):Chat("O pulo infinito foi desativado automaticamente após 1 minuto.")
+end
+
+-- Inicia a função de reset (caso queira desabilitar após um tempo)
+spawn(resetSettings)
