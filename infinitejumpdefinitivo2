@@ -1,0 +1,194 @@
+--[[
+    WARNING: This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+
+-- Variáveis globais para configurar o comportamento do script
+_G.JumpHeight = 50  -- Defina a altura do pulo
+_G.InfiniteJumpEnabled = true  -- Controle de ativação do pulo infinito
+_G.InfiniteJumpKey = Enum.KeyCode.Space  -- Defina a tecla para ativar o pulo infinito
+_G.CheckFrequency = 0.1  -- Frequência de verificação da altura de pulo
+
+-- Serviços usados no script
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+
+-- Função para verificar se o personagem é R6
+local function isR6(character)
+    return character:FindFirstChild("Torso") and character:FindFirstChild("Head")
+end
+
+-- Função para aplicar o pulo infinito ao jogador
+local function applyInfiniteJump(player)
+    if player.Character and isR6(player.Character) then
+        local character = player.Character
+        local humanoid = character:WaitForChild("Humanoid")
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+
+        humanoid.JumpHeight = _G.JumpHeight  -- Define a altura do pulo
+
+        -- Função para o controle do pulo infinito
+        UIS.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == _G.InfiniteJumpKey then
+                -- Ação de pulo infinito
+                if humanoid:GetState() == Enum.HumanoidStateType.Jumping or humanoid:GetState() == Enum.HumanoidStateType.Freefall then
+                    rootPart.Velocity = Vector3.new(0, _G.JumpHeight, 0)  -- Altera a velocidade para manter o pulo
+                end
+            end
+        end)
+
+        -- Garantir que o jogador continue no ar
+        RunService.Stepped:Connect(function(_, dt)
+            if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
+                rootPart.Velocity = Vector3.new(0, _G.JumpHeight, 0)  -- Garante que a velocidade do pulo seja mantida
+            end
+        end)
+    else
+        warn(player.Name .. " não é um personagem R6. Ignorando...")
+    end
+end
+
+-- Função para inicializar o pulo infinito para todos os jogadores R6
+local function initializeInfiniteJumpForAllPlayers()
+    -- Aplica o pulo infinito a todos os jogadores no servidor
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            applyInfiniteJump(player)  -- Aplica a lógica de pulo infinito ao jogador
+        else
+            player.CharacterAdded:Connect(function()
+                applyInfiniteJump(player)  -- Aplica a lógica quando o jogador entra no jogo
+            end)
+        end
+    end
+
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            applyInfiniteJump(player)  -- Aplica a lógica quando um novo jogador entra no servidor
+        end)
+    end)
+end
+
+-- Função para estabilizar o jogador no ar e garantir que ele não caia
+local function stabilizePlayerInAir(player)
+    -- Estabiliza o jogador para não cair no chão, mantendo-o sempre no ar
+    if player.Character and isR6(player.Character) then
+        local character = player.Character
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+        -- Aplicar a plataforma invisível para manter o jogador no ar
+        RunService.Heartbeat:Connect(function(_, dt)
+            if character and humanoidRootPart then
+                humanoidRootPart.Velocity = Vector3.new(0, _G.JumpHeight, 0)  -- Garante a manutenção do pulo
+            end
+        end)
+    end
+end
+
+-- Função para verificar e corrigir a posição do jogador em tempo real
+local function correctPlayerPosition()
+    RunService.Heartbeat:Connect(function(_, dt)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and isR6(player.Character) then
+                local character = player.Character
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                
+                if humanoid and humanoidRootPart then
+                    -- Se o jogador estiver caindo, aplica a correção de posição
+                    if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
+                        humanoidRootPart.Velocity = Vector3.new(0, _G.JumpHeight, 0)  -- Ajusta a velocidade do pulo
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Função para criar uma plataforma invisível para o jogador, garantindo que ele não caia
+local function createInvisiblePlatformForPlayer()
+    -- Cria a plataforma invisível para o jogador
+    local platform = Instance.new("Part")
+    platform.Name = "InvisiblePlatform"
+    platform.Size = Vector3.new(10, 0.1, 10)
+    platform.Anchored = true
+    platform.Transparency = 1  -- Torna a plataforma invisível
+    platform.CanCollide = false  -- Impede que a plataforma colida com o jogador
+    platform.Parent = game.Workspace
+
+    -- Atualiza a posição da plataforma para ficar abaixo do jogador
+    RunService.Stepped:Connect(function(_, dt)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local humanoidRootPart = player.Character.HumanoidRootPart
+                platform.CFrame = CFrame.new(humanoidRootPart.Position.X, humanoidRootPart.Position.Y - 3.5, humanoidRootPart.Position.Z)
+            end
+        end
+    end)
+end
+
+-- Função para garantir que o pulo infinito seja ativado constantemente
+local function ensureInfiniteJumpConsistency()
+    -- A cada ciclo, verifica se o jogador está no ar e aplica o pulo
+    RunService.Heartbeat:Connect(function(_, dt)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local humanoidRootPart = player.Character.HumanoidRootPart
+                if humanoidRootPart.Velocity.Y == 0 then
+                    humanoidRootPart.Velocity = Vector3.new(0, _G.JumpHeight, 0)
+                end
+            end
+        end
+    end)
+end
+
+-- Função para garantir que o pulo funcione em todos os jogadores R6
+local function applyJumpToAllPlayers()
+    -- Aplica o pulo infinito a todos os jogadores
+    for _, player in ipairs(Players:GetPlayers()) do
+        player.CharacterAdded:Connect(function()
+            applyInfiniteJump(player)  -- Aplica o pulo infinito ao jogador
+        end)
+    end
+
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            applyInfiniteJump(player)  -- Aplica a lógica de pulo infinito para novos jogadores
+        end)
+    end)
+end
+
+-- Função para estabilizar todos os jogadores no servidor
+local function stabilizeAllPlayers()
+    -- Estabiliza todos os jogadores que estão no ar
+    for _, player in ipairs(Players:GetPlayers()) do
+        stabilizePlayerInAir(player)
+    end
+
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            stabilizePlayerInAir(player)
+        end)
+    end)
+end
+
+-- Função para iniciar a configuração do pulo infinito
+local function initializeJumpingMechanics()
+    -- Configura todos os jogadores para usar o pulo infinito
+    initializeInfiniteJumpForAllPlayers()
+    -- Cria plataforma invisível
+    createInvisiblePlatformForPlayer()
+    -- Aplica o pulo infinito e estabiliza os jogadores
+    applyJumpToAllPlayers()
+    stabilizeAllPlayers()
+    -- Garante a consistência do pulo infinito
+    ensureInfiniteJumpConsistency()
+    -- Corrige a posição do jogador constantemente
+    correctPlayerPosition()
+end
+
+-- Inicia o script
+initializeJumpingMechanics()
+
+-- Fim do script.
