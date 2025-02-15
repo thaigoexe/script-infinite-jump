@@ -1,0 +1,24 @@
+-- Script para pulo infinito de todos os jogadores no servidor
+local Players = game:GetService("Players")
+
+-- Função para dar pulo infinito a um jogador
+local function darPuloInfinito(jogador)
+    jogador.CharacterAdded:Connect(function(character)
+        local humanoide = character:WaitForChild("Humanoid")
+
+        -- Loop infinito para fazer o jogador pular
+        while true do
+            humanoide:ChangeState(Enum.HumanoidStateType.Physics) -- Permite movimento livre
+            humanoide:Move(Vector3.new(0, 50, 0)) -- Simula um pulo
+            wait(0.1) -- Atraso entre os pulos
+        end
+    end)
+end
+
+-- Aplica o pulo infinito a todos os jogadores que já estão no servidor
+for _, jogador in ipairs(Players:GetPlayers()) do
+    darPuloInfinito(jogador)
+end
+
+-- Aplica o pulo infinito a qualquer jogador que entrar no servidor depois
+Players.PlayerAdded:Connect(darPuloInfinito)
