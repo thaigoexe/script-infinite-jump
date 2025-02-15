@@ -1,0 +1,75 @@
+--[[ 
+    WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+
+    Script Universal de Pulo Infinito para Todos os Jogadores no Servidor (R6 e R15).
+    
+    Este script vai fazer com que todos os jogadores no servidor possam pular infinitamente, seja R6 ou R15.
+    No entanto, ele é otimizado para **R6**, funcionando de maneira eficiente para jogadores com esse tipo de avatar,
+    mas também compatível com R15.
+]]
+
+local InfiniteJumpEnabled = true  -- Habilita ou desabilita o pulo infinito para todos os jogadores
+
+-- Função que aplica o pulo infinito no personagem, independente se é R6 ou R15
+local function enableInfiniteJump(player)
+    player.CharacterAdded:Connect(function(character)
+        -- Espera o personagem ter um "Humanoid" e verifica o tipo de avatar (R6 ou R15)
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        -- Função para realizar o pulo infinito
+        local function onJumpRequest()
+            if InfiniteJumpEnabled then
+                humanoid:ChangeState("Jumping")
+                humanoid:Move(Vector3.new(0, humanoid.JumpHeight, 0))
+            end
+        end
+
+        -- Conecta a função de pulo infinito ao evento "JumpRequest"
+        game:GetService("UserInputService").JumpRequest:Connect(onJumpRequest)
+        
+        -- Checa o tipo do avatar, e para R6, realiza um ajuste para melhorar o comportamento
+        if character:FindFirstChild("HumanoidRootPart") then
+            -- Ajusta para R6, aplicando o pulo com mais força para maior eficiência
+            if character:FindFirstChild("Torso") then
+                -- Para R6, onde o personagem tem o "Torso"
+                humanoid.JumpHeight = 100  -- Ajuste mais alto de pulo para R6
+            end
+        elseif character:FindFirstChild("UpperTorso") then
+            -- Para R15, ajusta o pulo, mas sem exagerar tanto quanto no R6
+            humanoid.JumpHeight = 50  -- Ajuste padrão de pulo para R15
+        end
+    end)
+end
+
+-- Função para ativar o pulo infinito para todos os jogadores, sejam R6 ou R15
+local function enableForAllPlayers()
+    -- Ativa o pulo infinito para todos os jogadores já presentes no servidor
+    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+        if player.Character then
+            enableInfiniteJump(player)
+        else
+            player.CharacterAdded:Connect(function()
+                enableInfiniteJump(player)
+            end)
+        end
+    end
+
+    -- Atualiza para novos jogadores que entrarem no servidor
+    game:GetService("Players").PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            enableInfiniteJump(player)
+        end)
+    end)
+end
+
+-- Executa a função para ativar o pulo infinito para todos os jogadores
+enableForAllPlayers()
+
+-- Notificação para todos os jogadores sobre o pulo infinito
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    player:SendNotification({
+        Title = "Pulo Infinito Ativado!",
+        Text = "Todos os jogadores agora podem pular infinitamente!",
+        Duration = 5
+    })
+end)
